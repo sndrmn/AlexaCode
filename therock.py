@@ -17,15 +17,15 @@ cf2 = boto3.client('cloudformation', region_name="eu-west-2")
 
 # Variables, here is where I define Alex custom responses as well as userdata
 SKILL_NAME = "The Rock Web Server"
-DEFAULT_REPLY = '<speak><audio src="https://s3-ap-southeast-2.amazonaws.com/aws-class-demos/Alexa+Media/heyyoualright.mp3" /> </speak>'
-REPLY = '<speak><audio src="https://aws-class-demos.s3-ap-southeast-2.amazonaws.com/Alexa+Media/SpinUpEC2.mp3" /> </speak>'
-CONTAINER_REPLY = '<speak> Hello Mr Rock, are you still there? <break time="1s"/><audio src="https://s3-ap-southeast-2.amazonaws.com/aws-class-demos/Alexa+Media/Finallytherockhascomeback.mp3" /> <break time="1s"/>....welcome back Mr Rock.  Did you start the container? <audio src="https://s3-ap-southeast-2.amazonaws.com/aws-class-demos/Alexa+Media/ifyousmellwhattherockiscooking2.mp3" /> ..containers start quickly, lets browse to the website... the rock ....dot .... sander .... dot .... training ....and sample The Rocks cooking</speak>'
-DATA = '#!/bin/bash\nsudo yum install -y httpd\nsudo systemctl start httpd\nsudo systemctl enable httpd\ncd /var/www/html\nsudo wget https://s3-ap-southeast-2.amazonaws.com/aws-class-demos/Alexa+Media/therock.tar.gz\nsudo tar --strip-components=1 -zxf therock.tar.gz'
+DEFAULT_REPLY = '<speak><audio src="*****************" /> </speak>'
+REPLY = '<speak><audio src="*****************" /> </speak>'
+CONTAINER_REPLY = '<speak> Hello Mr Rock, are you still there? <break time="1s"/><audio src="*****************" /> <break time="1s"/>....welcome back Mr Rock.  Did you start the container? <audio src="*****************" /> ..containers start quickly, lets browse to the website... the rock ....dot .... sander .... dot .... training ....and sample The Rocks cooking</speak>'
+DATA = '#!/bin/bash\nsudo yum install -y httpd\nsudo systemctl start httpd\nsudo systemctl enable httpd\ncd /var/www/html\nsudo wget *****************\nsudo tar --strip-components=1 -zxf therock.tar.gz'
 CONTAINER_START_REPLY = '<speak>  Container Started </speak>'
 CONTAINER_STOP_REPLY = '<speak>  Container Stopped </speak>' 
-DYNAMODB_REPLY='<speak><audio src="https://aws-class-demos.s3-ap-southeast-2.amazonaws.com/Alexa+Media/AlexaRockConversation.mp3" /></speak>'
-CF_REPLY='<speak><audio src="https://s3-ap-southeast-2.amazonaws.com/aws-class-demos/Alexa+Media/Youcantbeattherock.mp3" /> The Rock is launching our Cloud Formation stacks in Sydney and London, check CF console for progress </speak>'
-R53_REPLY='<speak><audio src="https://s3-ap-southeast-2.amazonaws.com/aws-class-demos/Alexa+Media/Youcantbeattherock.mp3" /> The Rock has created the R53 Demo DNS records </speak>'
+DYNAMODB_REPLY='<speak><audio src="*****************" /></speak>'
+CF_REPLY='<speak><audio src="*****************" /> The Rock is launching our Cloud Formation stacks in Sydney and London, check CF console for progress </speak>'
+R53_REPLY='<speak><audio src="*****************" /> The Rock has created the R53 Demo DNS records </speak>'
 
 # Code starts here and based on type of sessions directs flow appropriately
 
@@ -205,7 +205,7 @@ def stop_container():
 # DB Name = TheRockMovies, Primary Key = Year, Sort Key = Title
 
 def complete_dynamoDB():
-    s3.Bucket("aws-class-demos").download_file("MovieList.json", "/tmp/MovieList.json")
+    s3.Bucket("*****************").download_file("MovieList.json", "/tmp/MovieList.json")
     with open('/tmp/MovieList.json') as json_file:
         data = json.load(json_file)
         for p in data['TheRockMovies']:
