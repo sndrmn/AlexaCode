@@ -170,7 +170,7 @@ def start_container():
     #                    'Name': 'therock.sander.training.',
     #                    'Type': 'A',
     #                    'TTL': 1,
-    #                    'ResourceRecords': [{'Value': "13.55.138.73"}]
+    #                    'ResourceRecords': [{'Value': "*****************"}]
     #                }
     #            }
     #        ]
@@ -224,12 +224,12 @@ def cfdemo():
     cfinfo = cf.create_stack(
         StackName='TheRockSydney',
         TemplateURL='*****************',
-        RoleARN='arn:aws:iam::556710703696:role/CF-Admin',
+        RoleARN='*****************',
         )
     cfinfo2 = cf2.create_stack(
         StackName='TheRockLondon',
         TemplateURL='*****************',
-        RoleARN='arn:aws:iam::556710703696:role/CF-Admin',
+        RoleARN='*****************',
         )
     
     cardcontent = CF_REPLY
