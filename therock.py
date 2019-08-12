@@ -2,25 +2,30 @@
 
 import boto3
 import json
+import time
 
 # Initializing all that boto3 goodness
 ec2 = boto3.resource('ec2', region_name="ap-southeast-2")
 r53 = boto3.client('route53')
 ecs = boto3.client('ecs', region_name="ap-southeast-2")
 ssm = boto3.client('ssm', region_name="ap-southeast-2")
+ssm2 = boto3.client('ssm', region_name="eu-west-2")
 ddb = boto3.client('dynamodb', region_name="ap-southeast-2")
 s3 = boto3.resource('s3')
+cf = boto3.client('cloudformation', region_name="ap-southeast-2")
+cf2 = boto3.client('cloudformation', region_name="eu-west-2")
 
 # Variables, here is where I define Alex custom responses as well as userdata
 SKILL_NAME = "The Rock Web Server"
-DEFAULT_REPLY = '<speak><audio src="insert s3 mp3 file: Requirements MPEG v2, bit rate 48 kbps, sample rate 16000 Hz" /> </speak>'
-REPLY = '<speak>Hello Mr Rock, this is Alexa. Can you please build a EC2 web server now? <break time="1s"/><audio src="insert s3 mp3 file: Requirements MPEG v2, bit rate 48 kbps, sample rate 16000 Hz" /> <break time="1s"/>..it sounds like The Rock is cooking up our web server. Lets give The Rock a minute and sample his cooking by browsing to website.... therock ....dot.... sander ....dot.... training </speak>'
-CONTAINER_REPLY = '<speak> Hello Mr Rock, are you still there? <break time="1s"/><audio src="insert s3 mp3 file: Requirements MPEG v2, bit rate 48 kbps, sample rate 16000 Hz" /> <break time="1s"/>....welcome back Mr Rock.  Did you start the container? <audio src="insert s3 mp3 file: Requirements MPEG v2, bit rate 48 kbps, sample rate 16000 Hz" /> ..containers start quickly, lets browse to the website... the rock ....dot .... sander .... dot .... training ....and sample The Rocks cooking</speak>'
+DEFAULT_REPLY = '<speak><audio src="https://s3-ap-southeast-2.amazonaws.com/aws-class-demos/Alexa+Media/heyyoualright.mp3" /> </speak>'
+REPLY = '<speak><audio src="https://aws-class-demos.s3-ap-southeast-2.amazonaws.com/Alexa+Media/SpinUpEC2.mp3" /> </speak>'
+CONTAINER_REPLY = '<speak> Hello Mr Rock, are you still there? <break time="1s"/><audio src="https://s3-ap-southeast-2.amazonaws.com/aws-class-demos/Alexa+Media/Finallytherockhascomeback.mp3" /> <break time="1s"/>....welcome back Mr Rock.  Did you start the container? <audio src="https://s3-ap-southeast-2.amazonaws.com/aws-class-demos/Alexa+Media/ifyousmellwhattherockiscooking2.mp3" /> ..containers start quickly, lets browse to the website... the rock ....dot .... sander .... dot .... training ....and sample The Rocks cooking</speak>'
 DATA = '#!/bin/bash\nsudo yum install -y httpd\nsudo systemctl start httpd\nsudo systemctl enable httpd\ncd /var/www/html\nsudo wget https://s3-ap-southeast-2.amazonaws.com/aws-class-demos/Alexa+Media/therock.tar.gz\nsudo tar --strip-components=1 -zxf therock.tar.gz'
 CONTAINER_START_REPLY = '<speak>  Container Started </speak>'
-CONTAINER_STOP_REPLY = '<speak>  Container Stopped </speak>'
-DYNAMODB_REPLY='<speak> The Rock has populated our Database </speak>'
-
+CONTAINER_STOP_REPLY = '<speak>  Container Stopped </speak>' 
+DYNAMODB_REPLY='<speak><audio src="https://aws-class-demos.s3-ap-southeast-2.amazonaws.com/Alexa+Media/AlexaRockConversation.mp3" /></speak>'
+CF_REPLY='<speak><audio src="https://s3-ap-southeast-2.amazonaws.com/aws-class-demos/Alexa+Media/Youcantbeattherock.mp3" /> The Rock is launching our Cloud Formation stacks in Sydney and London, check CF console for progress </speak>'
+R53_REPLY='<speak><audio src="https://s3-ap-southeast-2.amazonaws.com/aws-class-demos/Alexa+Media/Youcantbeattherock.mp3" /> The Rock has created the R53 Demo DNS records </speak>'
 
 # Code starts here and based on type of sessions directs flow appropriately
 
@@ -49,6 +54,10 @@ def on_intent(request, session):
         return stop_container()
     elif intent_name == "dynamoDB":
         return complete_dynamoDB()
+    elif intent_name == "cloudformation":
+        return cfdemo()
+    elif intent_name == "DNSRecords":
+        return R53Records()
 
 
 # Function builds an EC2 instance launched with userdata
@@ -56,29 +65,32 @@ def on_intent(request, session):
 
 def build_web_server():
     instances = ec2.create_instances(
-        ImageId='insert custom AMI ID here', InstanceType='t2.micro', MinCount=1, MaxCount=1, UserData=DATA,
+        ImageId='*****************', InstanceType='t2.micro', MinCount=1, MaxCount=1, UserData=DATA,
         KeyName='veenss',
         IamInstanceProfile={
             'Name': 'AlexaEC2RockDemo'
         },
-        NetworkInterfaces=[{'SubnetId': 'insert subnet id', 'DeviceIndex': 0, 'AssociatePublicIpAddress': True,
-                            'Groups': ['insert security group id', 'insert security group id']}],
+        NetworkInterfaces=[{'SubnetId': '*****************', 'DeviceIndex': 0, 'AssociatePublicIpAddress': True,
+                            'Groups': ['*****************', '*****************']}],
         TagSpecifications=[
             {'ResourceType': 'instance', 'Tags': [{'Key': 'Name', 'Value': 'Web Server - Launched by Alexa'}, ]}, ],
     )
-
+    time.sleep(2)
     instance_id = instances[0].instance_id
+    #print instance_id
     ec2instance = ec2.Instance(instance_id)
+    #print ec2instance
     publicip = ec2instance.public_ip_address
+    #print publicip
 
     r53.change_resource_record_sets(
-        HostedZoneId='insert R53 Hosted Zone',
+        HostedZoneId='*****************',
         ChangeBatch={
             'Changes': [
                 {
                     'Action': 'UPSERT',
                     'ResourceRecordSet': {
-                        'Name': 'insert your DNS A record',
+                        'Name': 'therock.sander.training.',
                         'Type': 'A',
                         'TTL': 1,
                         'ResourceRecords': [{'Value': publicip}]
@@ -99,9 +111,9 @@ def build_web_server():
 def start_rockcontainer():
     task = ecs.run_task(
         cluster='TheRocks-Cluster',
-        taskDefinition='insert ECS Task Definition ARN'
+        taskDefinition='*****************'
     )
-
+    
     taskarn = task['tasks'][0]['taskArn']
     ssm.put_parameter(
         Name='ECSTaskArn',
@@ -110,16 +122,16 @@ def start_rockcontainer():
     )
 
     r53.change_resource_record_sets(
-        HostedZoneId='insert R53 Hosted Zone',
+        HostedZoneId='*****************',
         ChangeBatch={
             'Changes': [
                 {
                     'Action': 'UPSERT',
                     'ResourceRecordSet': {
-                        'Name': 'insert your DNS A record',
+                        'Name': 'therock.sander.training.',
                         'Type': 'A',
                         'TTL': 1,
-                        'ResourceRecords': [{'Value': "insert public ip"}]
+                        'ResourceRecords': [{'Value': "*****************"}]
                     }
                 }
             ]
@@ -138,7 +150,7 @@ def start_rockcontainer():
 def start_container():
     task = ecs.run_task(
         cluster='TheRocks-Cluster',
-        taskDefinition='insert ECS Task Definition ARN'
+        taskDefinition='*****************'
     )
 
     taskarn = task['tasks'][0]['taskArn']
@@ -148,22 +160,22 @@ def start_container():
         Type='String'
     )
 
-    r53.change_resource_record_sets(
-        HostedZoneId='insert your DNS A record',
-        ChangeBatch={
-            'Changes': [
-                {
-                    'Action': 'UPSERT',
-                    'ResourceRecordSet': {
-                        'Name': 'insert your DNS A record',
-                        'Type': 'A',
-                        'TTL': 1,
-                        'ResourceRecords': [{'Value': "insert public Ip"}]
-                    }
-                }
-            ]
-        }
-    )
+    #r53.change_resource_record_sets(
+    #    HostedZoneId='*****************',
+    #    ChangeBatch={
+    #        'Changes': [
+    #            {
+    #                'Action': 'UPSERT',
+    #                'ResourceRecordSet': {
+    #                    'Name': 'therock.sander.training.',
+    #                    'Type': 'A',
+    #                    'TTL': 1,
+    #                    'ResourceRecords': [{'Value': "13.55.138.73"}]
+    #                }
+    #            }
+    #        ]
+    #    }
+    #)
 
     cardcontent = CONTAINER_START_REPLY
     speechOutput = CONTAINER_START_REPLY
@@ -178,7 +190,7 @@ def stop_container():
     taskarn = taskarn['Parameter']['Value']
 
     task_stop = ecs.stop_task(
-        cluster='insert cluster id',
+        cluster='TheRocks-Cluster',
         task=taskarn
     )
 
@@ -193,13 +205,13 @@ def stop_container():
 # DB Name = TheRockMovies, Primary Key = Year, Sort Key = Title
 
 def complete_dynamoDB():
-    s3.Bucket("insert s3 bucket").download_file("insert json list", "insert json list")
-    with open('insert json list') as json_file:
+    s3.Bucket("aws-class-demos").download_file("MovieList.json", "/tmp/MovieList.json")
+    with open('/tmp/MovieList.json') as json_file:
         data = json.load(json_file)
-        for p in data['insert DynamoDB table name']:
+        for p in data['TheRockMovies']:
             Title = p['PutRequest']['Item']['Title']
             ddb.put_item(
-                TableName = 'insert DynamoDB table name',
+                TableName = 'TheRockMovies',
                 Item = p['PutRequest']['Item']
             )
             
@@ -208,6 +220,297 @@ def complete_dynamoDB():
     return response(speech_response_with_card(SKILL_NAME, speechOutput,
                                               cardcontent, True))
 
+def cfdemo():
+    cfinfo = cf.create_stack(
+        StackName='TheRockSydney',
+        TemplateURL='*****************',
+        RoleARN='arn:aws:iam::556710703696:role/CF-Admin',
+        )
+    cfinfo2 = cf2.create_stack(
+        StackName='TheRockLondon',
+        TemplateURL='*****************',
+        RoleARN='arn:aws:iam::556710703696:role/CF-Admin',
+        )
+    
+    cardcontent = CF_REPLY
+    speechOutput = CF_REPLY
+    return response(speech_response_with_card(SKILL_NAME, speechOutput,
+                                              cardcontent, True))
+
+def R53Records():
+    syd = ssm.get_parameter(Name='R53-Demo-ELB-DNS')
+    syd = syd['Parameter']['Value']
+    lon = ssm2.get_parameter(Name='R53-Demo-ELB-DNS')
+    lon = lon['Parameter']['Value']
+    
+    # Create Failover Records x 2
+    sydfailover = r53.change_resource_record_sets(
+        HostedZoneId = '*****************',
+        ChangeBatch = {
+            'Changes': [
+                {
+                'Action': 'UPSERT',
+                'ResourceRecordSet': {
+                    'Name': 'failover.sander.training',
+                    'Type': 'A',
+                    'SetIdentifier': 'RockSydney',
+                    'Failover': 'PRIMARY',
+                    'AliasTarget': {
+                        'HostedZoneId': '*****************',
+                        'DNSName': syd,
+                        'EvaluateTargetHealth': True
+                    }
+                }
+                },
+            ]
+        }
+    )
+    
+    lonfailover = r53.change_resource_record_sets(
+        HostedZoneId = '*****************',
+        ChangeBatch = {
+            'Changes': [
+                {
+                'Action': 'UPSERT',
+                'ResourceRecordSet': {
+                    'Name': 'failover.sander.training',
+                    'Type': 'A',
+                    'SetIdentifier': 'RockLondon',
+                    'Failover': 'SECONDARY',
+                    'AliasTarget': {
+                        'HostedZoneId': '*****************',
+                        'DNSName': lon,
+                        'EvaluateTargetHealth': True
+                    }
+                }
+                },
+            ]
+        }
+    )
+    
+    # Create Geolocation Records x 3
+    defgeolocation = r53.change_resource_record_sets(
+        HostedZoneId = '*****************',
+        ChangeBatch = {
+            'Changes': [
+                {
+                'Action': 'UPSERT',
+                'ResourceRecordSet': {
+                    'Name': 'geolocation.sander.training',
+                    'Type': 'A',
+                    'SetIdentifier': 'RockDefault',
+                    'GeoLocation': {
+                        'CountryCode': '*'
+                    },
+                    'AliasTarget': {
+                        'HostedZoneId': '*****************',
+                        'DNSName': syd,
+                        'EvaluateTargetHealth': True
+                    }
+                }
+                },
+            ]
+        }
+    )
+    
+    sydgeolocation = r53.change_resource_record_sets(
+        HostedZoneId = '*****************',
+        ChangeBatch = {
+            'Changes': [
+                {
+                'Action': 'UPSERT',
+                'ResourceRecordSet': {
+                    'Name': 'geolocation.sander.training',
+                    'Type': 'A',
+                    'SetIdentifier': 'RockSydney',
+                    'GeoLocation': {
+                        'ContinentCode': 'AS'
+                    },
+                    'AliasTarget': {
+                        'HostedZoneId': '*****************',
+                        'DNSName': syd,
+                        'EvaluateTargetHealth': True
+                    }
+                }
+                },
+            ]
+        }
+    )
+    
+    longeolocation = r53.change_resource_record_sets(
+        HostedZoneId = '*****************',
+        ChangeBatch = {
+            'Changes': [
+                {
+                'Action': 'UPSERT',
+                'ResourceRecordSet': {
+                    'Name': 'geolocation.sander.training',
+                    'Type': 'A',
+                    'SetIdentifier': 'RockLondon',
+                    'GeoLocation': {
+                        'ContinentCode': 'EU'
+                    },
+                    'AliasTarget': {
+                        'HostedZoneId': '*****************',
+                        'DNSName': lon,
+                        'EvaluateTargetHealth': True
+                    }
+                }
+                },
+            ]
+        }
+    )
+    
+    # Create Latency Records x 2
+    sydlatency = r53.change_resource_record_sets(
+        HostedZoneId = '*****************',
+        ChangeBatch = {
+            'Changes': [
+                {
+                'Action': 'UPSERT',
+                'ResourceRecordSet': {
+                    'Name': 'latency.sander.training',
+                    'Type': 'A',
+                    'SetIdentifier': 'RockSydney',
+                    'Region': 'ap-southeast-2',
+                    'AliasTarget': {
+                        'HostedZoneId': '*****************',
+                        'DNSName': syd,
+                        'EvaluateTargetHealth': True
+                    }
+                }
+                },
+            ]
+        }
+    )
+    
+    lonlatency = r53.change_resource_record_sets(
+        HostedZoneId = '*****************',
+        ChangeBatch = {
+            'Changes': [
+                {
+                'Action': 'UPSERT',
+                'ResourceRecordSet': {
+                    'Name': 'latency.sander.training',
+                    'Type': 'A',
+                    'SetIdentifier': 'RockLondon',
+                    'Region': 'eu-west-2',
+                    'AliasTarget': {
+                        'HostedZoneId': '*****************',
+                        'DNSName': lon,
+                        'EvaluateTargetHealth': True
+                    }
+                }
+                },
+            ]
+        }
+    )
+    
+    # Create GeoProximity Policies & Records
+
+    #I am not a dev :( -  this was my hack to get a variable into my JSON    
+    part1 = '''
+    {
+        "AWSPolicyFormatVersion":"2015-10-01",
+        "RecordType":"A",
+        "StartRule":"geoprox-rule",
+        "Endpoints":{
+            "aws-eu-west-2-region":{
+                "Type":"elastic-load-balancer",
+                "Value":'''
+    part2 = '''
+            },
+            "aws-ap-southeast-2-region":{
+                "Type":"elastic-load-balancer",
+                "Value":'''
+    part3 = '''
+            }
+        },
+        "Rules":{
+            "geoprox-rule":{
+                "RuleType": "geoproximity",
+                "GeoproximityLocations": [
+                    {
+                        "EndpointReference": "aws-eu-west-2-region",
+                        "Region": "aws:route53:eu-west-2",
+                        "Bias": "0",
+                        "EvaluateTargetHealth": "true"
+                    },
+                    {
+                        "EndpointReference": "aws-ap-southeast-2-region",
+                        "Region": "aws:route53:ap-southeast-2",
+                        "Bias": "0",
+                        "EvaluateTargetHealth": "true"
+                    }
+                ]
+            }
+        }
+    }'''
+    part4 = '''
+            }
+        },
+        "Rules":{
+            "geoprox-rule":{
+                "RuleType": "geoproximity",
+                "GeoproximityLocations": [
+                    {
+                        "EndpointReference": "aws-eu-west-2-region",
+                        "Region": "aws:route53:eu-west-2",
+                        "Bias": "-99",
+                        "EvaluateTargetHealth": "true"
+                    },
+                    {
+                        "EndpointReference": "aws-ap-southeast-2-region",
+                        "Region": "aws:route53:ap-southeast-2",
+                        "Bias": "99",
+                        "EvaluateTargetHealth": "true"
+                    }
+                ]
+            }
+        }
+    }'''
+    gp1 = (part1+'"'+lon+'"'+part2+'"'+syd+'"'+part3)
+    gp2 = (part1+'"'+lon+'"'+part2+'"'+syd+'"'+part4)
+    
+    
+    geopolicy = r53.create_traffic_policy(
+        Name='R53Demo',
+        Document=gp1,
+        Comment='R53 Geoproximity Demo'
+        )
+    
+    #To create V2 traffic policy we need to find the unique ID of the first policy
+    geopolicyver = r53.list_traffic_policies()
+    geopolicyver = geopolicyver['TrafficPolicySummaries'][0]['Id']
+    
+    #Here we create V2 traffic policy using BIAS towards SYD
+    geopolicy2 = r53.create_traffic_policy_version(
+        Id=geopolicyver,
+        Document=gp2,
+        Comment='R53 Geoproximity Demo with Bias'
+        )
+    
+    #Here we create GeoProximity A record using v1 traffic policy
+    geoprox1 = r53.create_traffic_policy_instance(
+        HostedZoneId='*****************',
+        Name='geoproximity.sander.training',
+        TTL=60,
+        TrafficPolicyId=geopolicyver,
+        TrafficPolicyVersion=1
+        )
+    #Here we create GeoProximity A record using v2 traffic policy
+    geoprox2 = r53.create_traffic_policy_instance(
+        HostedZoneId='*****************',
+        Name='geoproximity2.sander.training',
+        TTL=60,
+        TrafficPolicyId=geopolicyver,
+        TrafficPolicyVersion=2
+        )
+    
+    cardcontent = R53_REPLY
+    speechOutput = R53_REPLY
+    return response(speech_response_with_card(SKILL_NAME, speechOutput,
+                                              cardcontent, True)) 
 
 def on_session_started():
     """" called when the session starts  """
