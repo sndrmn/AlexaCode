@@ -66,9 +66,9 @@ def on_intent(request, session):
 def build_web_server():
     instances = ec2.create_instances(
         ImageId='*****************', InstanceType='t2.micro', MinCount=1, MaxCount=1, UserData=DATA,
-        KeyName='veenss',
+        KeyName='*****************',
         IamInstanceProfile={
-            'Name': 'AlexaEC2RockDemo'
+            'Name': '*****************'
         },
         NetworkInterfaces=[{'SubnetId': '*****************', 'DeviceIndex': 0, 'AssociatePublicIpAddress': True,
                             'Groups': ['*****************', '*****************']}],
